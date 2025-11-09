@@ -1,0 +1,1 @@
+Make a viktor app that have a table view for: all categories from the model. All families from the model. a table with all Walls instance  from the model and get their area and sum all of the area at end.  use #file:aec-data-model.md 

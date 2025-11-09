@@ -1,0 +1,1 @@
+Generate viktor application that produces a table view grouping walls by their Structural Material. For each material type show: Structural Material, Number of Walls, Total Area, Average Area. Only include materials appearing in more than 3 walls. Use  #file:aec-data-model.md  

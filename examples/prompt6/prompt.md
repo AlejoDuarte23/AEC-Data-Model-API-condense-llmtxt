@@ -1,0 +1,1 @@
+The application must generate a table that lists all pipe elements that have a diameter greater than an input value. Use the queries and remarks from the attached markdown file #file:aec-data-model.md .

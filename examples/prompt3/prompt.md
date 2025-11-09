@@ -1,0 +1,1 @@
+Create a table that list the instance of "Structural Framing" and for each instance get the "Paint Area" for each also calculate the cost of painting if the cost is $7/m2 use the reference info  #file:aec-data-model.md 

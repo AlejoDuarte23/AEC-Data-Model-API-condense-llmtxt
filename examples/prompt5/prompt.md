@@ -1,0 +1,1 @@
+Create a VIKTOR app that, after I pick an Autodesk file, shows a table of Revit wall instances with their Type and Structural Material. show its display name, with columns Element Id, Element Name, Type, Structural Material.
