@@ -246,15 +246,17 @@ query UsedCategories($elementGroupId: ID!, $limit: Int!) {
 ```
 
 ### 4.2. All family names from category X -> Walls example
-All families defined in that category, whether or not they have placements. Filter on **Type** and the category.
+All families defined in the "Walls" category.
+
 ```graphql
-query FamilyNamesInCategory($elementGroupId: ID!) {
+query FamilyNamesInCategory($elementGroupId: ID!, $limit: Int) {
   distinctPropertyValuesInElementGroupByName(
     elementGroupId: $elementGroupId
     name: "Family Name"
     filter: { query: "property.name.category==Walls and 'property.name.Element Context'==Instance" }
   ) {
     results {
+      values(limit: $limit) {
         value
         count
       }
@@ -282,7 +284,7 @@ query UsedFamilyNames($elementGroupId: ID!, $limit: Int!) {
   }
 }
 ```
-`
+
 
 ## 5. Pagination
 
