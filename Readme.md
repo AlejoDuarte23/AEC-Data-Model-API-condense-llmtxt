@@ -14,6 +14,8 @@ The types of prompts this custom LLM works best with are listed in the `Examples
 * Queries across projects are not supported, queries are limited to a single `elementGroupId`.
 * For distinct values, this repository focuses on “Retrieve distinct values by name”, instead of “Retrieve distinct values by id”, since queries are written in natural language.
   [https://aps.autodesk.com/en/docs/aecdatamodel/v1/tutorials/tutorial02/distinctvaluesquery/#retrieve-distinct-values-by-name](https://aps.autodesk.com/en/docs/aecdatamodel/v1/tutorials/tutorial02/distinctvaluesquery/#retrieve-distinct-values-by-name)
+* The custom `llm.txt` focuses only on RSQL filtering (https://aps.autodesk.com/en/docs/aecdatamodel/v1/developers_guide/filtering/advanced-filtering/), which is more flexible, and omits the standard filtering approach (https://aps.autodesk.com/en/docs/aecdatamodel/v1/developers_guide/filtering/standard-filtering/) because, in practice, the model becomes confused when both querying methods are included. The original trimmed `llm.txt` contains information for **both** querying approaches.
+
 
 ## Size
 * `custom-aec-data-model-REV0.md`: 4,000 tokens
