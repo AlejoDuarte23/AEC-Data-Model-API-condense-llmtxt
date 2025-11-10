@@ -1,4 +1,19 @@
 
+# AEC Filtering, short summary
+
+This page holds a compact map of what the AEC filtering examples cover, nothing more than the essentials.
+
+## Items
+
+* Advance filtering, boolean logic in one query string
+* STD filtering, structured fields and comparators
+* Material classification, get materials then instances or types
+* Pagination basics, limit and cursor loop
+* Types to instances using referencedBy
+* Instances by material reference
+* Distinct property values, by id or by name
+* Quick rules, context control and match behavior
+
 ## Advance Filtering  
 
 ```
