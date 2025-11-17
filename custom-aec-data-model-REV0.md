@@ -211,6 +211,65 @@ if not material_name:
     material_name = "Unknown"
 ```
 
+### 3.2. Get properties from multiple references
+
+Width and Height may be in Type reference for elements like Doors, but are exposed at instance level for Walls or Structural Framing (like Length). This query retrieves both instance-level and Type-level properties for comparison, and demonstrates accessing multiple references (Type, Level) to get properties like `Door Material` from Type reference and level name from `Level` reference (similar to 3.1). Results can be post-processed for grouping by level or material.
+
+```graphql
+query GetDoorMaterials($elementGroupId: ID!) {
+  elementsByElementGroup(
+    elementGroupId: $elementGroupId,
+    filter: { query: "property.name.category==Doors and 'property.name.Element Context'==Instance" }
+  ) {
+    results {
+      name
+      properties(filter: { names: ["Width", "Height"] }) {
+        results {
+          name
+          value
+          definition {
+            units {
+              name
+            }
+          }
+        }
+      }
+      references(filter: { names: ["Type", "Level"] }) {
+        results {
+          name
+          displayValue
+          value {
+            id
+            name
+            properties(filter: { names: ["Width", "Height"] }) {
+              results {
+                name
+                value
+                definition {
+                  units {
+                    name
+                  }
+                }
+              }
+            }
+            references(filter: { names: ["Door Material"] }) {
+              results {
+                name
+                displayValue
+                value { id }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+For processing: Iterate through `results` to extract each door's name and properties. Check instance-level properties first for Width/Height. Loop through references: if `name=="Type"`, use `displayValue` for type name, check `value.properties.results` for Width/Height if missing at instance level, then check `value.references.results` for "Door Material" and use its `displayValue`. If `name=="Level"`, extract level name from `displayValue`. Handle missing units safely by checking `definition.units.name` exists before accessing.
+
+
 ## 4. distinctPropertyValuesInElementGroupByName
 
 "Distinct values" queries save you from doing your own deduplication. The trick is simple: use the **filter** to choose the population you care about, then ask the API to return unique values for a single property, with a server-side count.
@@ -285,6 +344,22 @@ query UsedFamilyNames($elementGroupId: ID!, $limit: Int!) {
 }
 ```
 
+## 4.3 Element Name and Type
+`Element Name` property doesn't appear in the explorer but internally it usually matches the "Type Name" of the element. Remember that "Type Instance" is not accessible through property but "Element Name" is. 
+
+```text
+name: "Element Name", filter: { query: "property.name.category==Floors and 'property.name.Element Name'=contains=Concrete and 'property.name.Element Context'==Instance" }
+
+name: "Type", filter: { query: "property.name.category==Floors and 'property.name.Element Name'=contains=Concrete and 'property.name.Element Context'==Instance" }
+```
+
+Similarly you can use the `name` parameter for properties of the instance, but also to get properties of the `references` of that element.
+
+```text
+name: "Structural Material", filter: { query: "property.name.category==Walls" }
+name: "Structural Usages", filter: { query: "property.name.category==Walls" }
+name: "Level", filter: { query: "property.name.category==Doors" }
+```
 
 ## 5. Pagination
 
@@ -293,6 +368,7 @@ query UsedFamilyNames($elementGroupId: ID!, $limit: Int!) {
 - Start with `limit` only, then keep calling with the returned cursor.
 - Treat the cursor as opaque; do not modify it.
 - Stop when the cursor is empty, or when the service repeats the same cursor, or when a page has zero results.
+- **Important:** Keep `limit` values reasonable (e.g., 100). Large values like 500 or 1000 can cause server warnings or errors.
 
 ```graphql
 query Example($elementGroupId: ID!, $pagination: PaginationInput) {
@@ -401,7 +477,7 @@ variables = {"elementGroupId": group_id, "rsqlFilter": rsql_filter}
 2. **Property values with spaces** must be enclosed in single quotes: `'Structural Framing'`, `'Cut Length'`
 3. **Property names without spaces** don't require quotes: `property.name.category`, `property.name.Width`
 4. **Property values without spaces** don't require quotes: `category==Walls`, `Width<700`
-5. **For `=contains=` operator**: Neither property names nor values need quotes, even with spaces: `property.name.Material=contains=Concrete`
+5. **For wildcard operators** (`=contains=`, `=startsWith=`, `=endsWith=`, `=caseSensitive=`): Neither property names nor values need quotes, even with spaces
 
 **Examples:**
 - ✅ Correct: `property.name.category=='Structural Framing'`
@@ -410,13 +486,45 @@ variables = {"elementGroupId": group_id, "rsqlFilter": rsql_filter}
 - ❌ Wrong: `property.name.Element Context==Instance` (will cause parsing error)
 - ✅ Correct: `property.name.category==Walls and property.name.Width<700`
 - ✅ Correct: `'property.name.Cut Length'>1000` (property name with space)
-- ✅ Correct: `property.name.Material=contains=Concrete` (contains operator)
-- ❌ Wrong: `'property.name.Material'=contains="Concrete"` (don't quote with contains)
+- ✅ Correct: `property.name.Material=contains=Concrete` (wildcard operator)
+- ❌ Wrong: `'property.name.Material'=contains="Concrete"` (don't quote with wildcard operators)
+
+### 6.1. Wildcard Operators
+
+RSQL supports pattern matching operators for string properties. These operators don't require quotes around property names or values:
+
+**Available operators:**
+- `=contains=` - Match substring anywhere
+- `=startsWith=` - Match string prefix
+- `=endsWith=` - Match string suffix
+- `=caseSensitive=` - Case-sensitive exact match
+
+**Examples:**
+```
+'property.name.Element Name'=contains=HVAC
+'property.name.Element Name'=startsWith=PVC
+'property.name.Element Name'=endsWith=Pipe
+property.name.room=endsWith=boiler
+property.name.room=contains=Fire
+property.name.comment=caseSensitive=Vertical
+```
+
+### 6.2. Compound Operations
+
+Combine multiple conditions using `and`/`or` operators. Use parentheses for grouping and order of operations:
+
+**Examples:**
+```
+property.name.category=contains=Pipes and 'property.name.Element Name'=contains='HVAC FM Boiler Feed'
+(property.name.category==Walls or property.name.category==Windows) and property.name.Length>5.0
+property.name.category==Doors and property.name.Width<700 and 'property.name.Element Context'==Instance
+```
 
 **Complete filter examples:**
 ```
 filter: { query: "property.name.category=='Structural Framing' and 'property.name.Element Context'==Instance" }
 filter: { query: "property.name.Material=contains=Concrete" }
+filter: { query: "(property.name.category==Walls or property.name.category==Windows) and property.name.Length>5.0" }
 ```
 
 ## 7. Notes
@@ -426,6 +534,7 @@ filter: { query: "property.name.Material=contains=Concrete" }
 - Use **`Family Name`** (instance or type property) - identifies the family of the element
 - Use **`Type Name`** (type property) - identifies the specific type within a family
 - Use the RSQL filter `property.name.category==<CategoryName>` to filter by category, but retrieve Family Name or Type Name to display the element classification
+- 
 
 **Example of correct approach:**
 ```python
@@ -495,4 +604,53 @@ class Controller(vkt.Controller):
         group_id = params.autodesk_file.get_aec_data_model_element_group_id(token)
 
         # (query elements, retrieve model metadata, etc.
+```
+
+## 9. Help user to navigate reference properties
+It is possible that the query filter doesn't return information from querying a property from an element instance, for example `property.name.Type Name` and `property.name.Material`. This is because the property lies in a Reference, but a reference can be a "Type", "Level", "Material" and more.
+
+1. We can get distinct/unique `Element Name` in a category, in case the user doesn't know the element name. Use the `distinctPropertyValuesInElementGroupByName` query from section 4 with:
+```text
+name: "Element Name", filter: { query: "property.name.category==Pipe and 'property.name.Element Context'==Instance" }
+```
+This may return element names like: `Copper`, `PVC-Pipe`, `Iron`
+
+2. Get all the references for a single element (e.g., Copper) and the properties for each reference:
+
+**Get all reference properties for Copper element in Pipe category:**
+
+```graphql
+query CopperPipeReferences($elementGroupId: ID!) {
+    elementsByElementGroup(
+    elementGroupId: $elementGroupId,
+    filter: { query: "property.name.category==Pipe and 'property.name.Element Context'==Instance and 'property.name.Element Name'==Copper" },
+    pagination: { limit: 1 }
+    ) {
+    results {
+        id
+        name
+        references {
+        results {
+            name
+            displayValue
+            value {
+            id
+            name
+            properties {
+                results {
+                name
+                value
+                definition {
+                    units {
+                    name
+                    }
+                }
+                }
+            }
+            }
+        }
+        }
+    }
+    }
+}
 ```
